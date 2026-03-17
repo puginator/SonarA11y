@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FixReport",
+  "type": "object",
+  "properties": {
+    "provider": { "type": "string", "const": "digitalocean-gradient" },
+    "reportType": { "type": "string", "enum": ["web", "pdf"] },
+    "scanMetadata": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "totalFindings": { "type": "integer", "minimum": 0 },
+        "byAgent": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "bySeverity": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "required": ["totalFindings", "byAgent", "bySeverity"]
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleId": { "type": "string" },
+          "targetSelector": { "type": "string" },
+          "page": { "type": "integer", "minimum": 1 },
+          "assignedAgent": {
+            "type": "string",
+            "enum": ["vision_node", "coder_node", "pdf_node"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "skipped", "error"]
+          },
+          "proposedHtml": { "type": "string" },
+          "proposedAltText": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "rationale": { "type": "string" },
+          "traceId": { "type": "string" },
+          "modelId": { "type": "string" },
+          "latencyMs": { "type": "integer", "minimum": 0 },
+          "tokenUsage": {
+            "type": "object",
+            "properties": {
+              "input": { "type": "integer", "minimum": 0 },
+              "output": { "type": "integer", "minimum": 0 },
+              "total": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "costUsd": { "type": "number", "minimum": 0 },
+          "error": { "type": "string" },
+          "details": { "type": "object" }
+        },
+        "required": [
+          "ruleId",
+          "assignedAgent",
+          "status",
+          "traceId",
+          "modelId",
+          "latencyMs"
+        ]
+      }
+    }
+  },
+  "required": ["provider", "reportType", "scanMetadata", "summary", "results"]
+}

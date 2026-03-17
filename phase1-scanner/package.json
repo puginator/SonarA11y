@@ -1,0 +1,22 @@
+{
+  "name": "phase1-scanner",
+  "version": "1.0.0",
+  "description": "SonarA11y Phase 1 web scanner",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "express": "^4.21.2",
+    "playwright": "1.58.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1",
+    "vitest": "^2.1.8"
+  }
+}

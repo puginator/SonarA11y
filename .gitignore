@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+phase1-scanner/node_modules/
+coverage/
+.DS_Store
+.vscode/

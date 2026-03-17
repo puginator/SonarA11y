@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SonarA11y Control Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Franklin:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #081018;
+      --bg-elev: #102231;
+      --panel: rgba(18, 34, 46, 0.86);
+      --line: rgba(126, 159, 177, 0.35);
+      --text: #e7f4ff;
+      --muted: #9dc1d4;
+      --ok: #5fe9a7;
+      --warn: #ffd173;
+      --error: #ff7d7d;
+      --accent: #46d7ff;
+      --accent-2: #f68c5d;
+      --shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Libre Franklin', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 15%, rgba(70, 215, 255, 0.16), transparent 38%),
+        radial-gradient(circle at 90% 2%, rgba(246, 140, 93, 0.16), transparent 32%),
+        linear-gradient(160deg, #060b10 0%, #0b1a25 45%, #091119 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(146, 182, 200, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(146, 182, 200, 0.08) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: radial-gradient(circle at center, black, transparent 80%);
+      opacity: 0.3;
+    }
+
+    .shell {
+      width: min(1120px, 94vw);
+      margin: 0 auto;
+      padding: 24px 0 64px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      padding: 28px;
+      border: 1px solid var(--line);
+      background: linear-gradient(150deg, rgba(25, 45, 61, 0.85), rgba(13, 24, 34, 0.85));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      margin-bottom: 22px;
+      border-radius: 16px;
+      animation: fade-up 450ms ease;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1px;
+      font-size: clamp(2.6rem, 6vw, 4.2rem);
+      line-height: 0.95;
+      font-weight: 400;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 60ch;
+    }
+
+    .status-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      backdrop-filter: blur(6px);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      animation: fade-up 600ms ease;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.8px;
+      font-weight: 400;
+      font-size: 1.7rem;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    input, button {
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(7, 12, 18, 0.75);
+      color: var(--text);
+      font: inherit;
+      padding: 11px 12px;
+    }
+
+    input[type="url"], input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    input[type="file"] {
+      max-width: 100%;
+      padding: 9px;
+    }
+
+    button {
+      cursor: pointer;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-size: 0.75rem;
+      transition: transform 130ms ease, border-color 130ms ease, background 130ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 255, 255, 0.45);
+    }
+
+    .primary {
+      background: linear-gradient(125deg, var(--accent), #2fa5ff);
+      color: #08131b;
+      border: none;
+    }
+
+    .secondary {
+      background: linear-gradient(125deg, var(--accent-2), #ffb86d);
+      color: #1e120b;
+      border: none;
+    }
+
+    .tertiary {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 4px;
+      min-height: 1.2em;
+    }
+
+    .progress-wrap {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(4, 11, 16, 0.65);
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 9px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(172, 196, 215, 0.18);
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(130deg, var(--accent), #2fa5ff);
+      transition: width 260ms ease;
+    }
+
+    .progress-stats {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(7, 16, 25, 0.7);
+      min-height: 88px;
+      animation: fade-up 700ms ease;
+    }
+
+    .summary-card .label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .summary-card .value {
+      margin-top: 8px;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .results {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: fade-up 850ms ease;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .results-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .table-wrap { overflow: auto; max-height: 60vh; }
+
+    .fix-board {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background:
+        linear-gradient(145deg, rgba(20, 37, 50, 0.92), rgba(10, 20, 29, 0.88));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: fade-up 760ms ease;
+    }
+
+    .fix-board[hidden] { display: none; }
+
+    .fix-board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at right top, rgba(246, 140, 93, 0.18), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+    }
+
+    .fix-board-header h3 {
+      margin: 0;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.08em;
+      font-weight: 400;
+      font-size: 1.6rem;
+    }
+
+    .fix-board-meta {
+      color: var(--muted);
+      font-size: 0.84rem;
+      max-width: 70ch;
+    }
+
+    .fix-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .fix-card {
+      position: relative;
+      border: 1px solid rgba(126, 159, 177, 0.26);
+      border-radius: 14px;
+      padding: 16px;
+      background:
+        linear-gradient(150deg, rgba(8, 16, 23, 0.98), rgba(13, 25, 35, 0.94));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      min-height: 220px;
+    }
+
+    .fix-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 14px 0 0 14px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      opacity: 0.9;
+    }
+
+    .fix-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(70, 215, 255, 0.12);
+      border: 1px solid rgba(70, 215, 255, 0.26);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .fix-card h4 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .fix-card p {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .fix-card + .fix-card {
+      animation-delay: 60ms;
+    }
+
+    .fix-label {
+      margin-top: 14px;
+      margin-bottom: 6px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .fix-suggestion {
+      margin-top: 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(246, 140, 93, 0.25);
+      background: rgba(246, 140, 93, 0.08);
+      color: #ffd9c6;
+      line-height: 1.45;
+    }
+
+    .fix-footnote {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(163, 191, 210, 0.17);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.74rem;
+      position: sticky;
+      top: 0;
+      background: rgba(9, 18, 27, 0.98);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+
+    .status {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid transparent;
+    }
+
+    .status.success { color: var(--ok); border-color: rgba(95, 233, 167, 0.35); }
+    .status.error { color: var(--error); border-color: rgba(255, 125, 125, 0.35); }
+    .status.skipped { color: var(--warn); border-color: rgba(255, 209, 115, 0.35); }
+
+    .muted { color: var(--muted); }
+
+    .json-view {
+      margin-top: 14px;
+      border-top: 1px solid var(--line);
+      padding: 14px 16px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(5, 10, 15, 0.9);
+      max-height: 360px;
+      overflow: auto;
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { grid-template-columns: 1fr; }
+      .fix-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .summary { grid-template-columns: 1fr; }
+      .shell { width: min(96vw, 1120px); }
+      .hero { padding: 20px; }
+      .panel { padding: 14px; }
+      .results-header { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <h1>SonarA11y Control Deck</h1>
+        <p>Run live accessibility scans, route fixes through Gradient agents, and inspect remediation output in one place.</p>
+      </div>
+      <div class="status-chip" id="api-status">Checking API...</div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Web Scan</h2>
+        <div class="row">
+          <input id="web-url" type="url" placeholder="https://example.gov/page" value="https://hounder.co" />
+          <button class="primary" id="run-web">Run Scan + Remediate</button>
+        </div>
+        <div class="row">
+          <button class="tertiary" id="use-demo">Use Demo URL</button>
+        </div>
+        <div class="meta" id="web-meta"></div>
+        <div class="progress-wrap" id="web-progress-wrap">
+          <div class="progress-label">
+            <span id="web-stage">Idle</span>
+            <span id="web-percent">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="web-progress-fill"></div>
+          </div>
+          <div class="progress-stats" id="web-progress-stats">Waiting for next run.</div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>PDF Job</h2>
+        <div class="row">
+          <input id="pdf-url" type="url" placeholder="PDF URL (optional)" value="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" />
+        </div>
+        <div class="row">
+          <input id="pdf-file" type="file" accept="application/pdf" />
+          <button class="secondary" id="run-pdf">Start PDF Job</button>
+        </div>
+        <div class="row">
+          <button class="tertiary" id="open-html" disabled>Open HTML Report</button>
+          <button class="tertiary" id="download-pdf" disabled>Download PDF Report</button>
+        </div>
+        <div class="meta" id="pdf-meta"></div>
+      </article>
+    </section>
+
+    <section class="summary" id="summary-cards">
+      <div class="summary-card">
+        <div class="label">Findings</div>
+        <div class="value" id="sum-findings">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Successful</div>
+        <div class="value" id="sum-success">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Errors</div>
+        <div class="value" id="sum-errors">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Avg Latency (ms)</div>
+        <div class="value" id="sum-latency">0</div>
+      </div>
+    </section>
+
+    <section class="fix-board" id="fix-board" hidden>
+      <header class="fix-board-header">
+        <div>
+          <h3>What To Fix</h3>
+          <div class="fix-board-meta" id="fix-board-meta">AI-generated remediation checklist will appear here.</div>
+        </div>
+      </header>
+      <div class="fix-grid" id="fix-grid"></div>
+      <div class="fix-footnote" id="fix-footnote"></div>
+    </section>
+
+    <section class="results">
+      <header class="results-header">
+        <h3>Remediation Results</h3>
+        <button class="tertiary" id="toggle-json">Toggle Raw JSON</button>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Selector / Page</th>
+              <th>Issue</th>
+              <th>Remediation</th>
+              <th>Suggested Value</th>
+              <th>Status</th>
+              <th>Trace ID</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr><td colspan="7" class="muted">Run a web scan or PDF job to populate remediation results.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="json-view" id="json-wrap" hidden>
+        <pre id="json-dump">{}</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const el = {
+      apiStatus: document.getElementById('api-status'),
+      webUrl: document.getElementById('web-url'),
+      webMeta: document.getElementById('web-meta'),
+      runWeb: document.getElementById('run-web'),
+      useDemo: document.getElementById('use-demo'),
+      webProgressWrap: document.getElementById('web-progress-wrap'),
+      webStage: document.getElementById('web-stage'),
+      webPercent: document.getElementById('web-percent'),
+      webProgressFill: document.getElementById('web-progress-fill'),
+      webProgressStats: document.getElementById('web-progress-stats'),
+      pdfUrl: document.getElementById('pdf-url'),
+      pdfFile: document.getElementById('pdf-file'),
+      pdfMeta: document.getElementById('pdf-meta'),
+      runPdf: document.getElementById('run-pdf'),
+      openHtml: document.getElementById('open-html'),
+      downloadPdf: document.getElementById('download-pdf'),
+      sumFindings: document.getElementById('sum-findings'),
+      sumSuccess: document.getElementById('sum-success'),
+      sumErrors: document.getElementById('sum-errors'),
+      sumLatency: document.getElementById('sum-latency'),
+      fixBoard: document.getElementById('fix-board'),
+      fixBoardMeta: document.getElementById('fix-board-meta'),
+      fixGrid: document.getElementById('fix-grid'),
+      fixFootnote: document.getElementById('fix-footnote'),
+      resultsBody: document.getElementById('results-body'),
+      toggleJson: document.getElementById('toggle-json'),
+      jsonWrap: document.getElementById('json-wrap'),
+      jsonDump: document.getElementById('json-dump')
+    };
+
+    const state = {
+      latestReport: null,
+      latestWebJobId: null,
+      latestPdfJobId: null
+    };
+
+    function setButtonLoading(button, isLoading, label) {
+      if (isLoading) {
+        button.dataset.previous = button.textContent;
+        button.textContent = label;
+        button.disabled = true;
+      } else {
+        button.textContent = button.dataset.previous || button.textContent;
+        button.disabled = false;
+      }
+    }
+
+    function setMeta(target, text, isError = false) {
+      target.textContent = text;
+      target.style.color = isError ? 'var(--error)' : 'var(--muted)';
+    }
+
+    function formatDuration(totalSeconds) {
+      const safe = Math.max(0, Number(totalSeconds || 0));
+      const minutes = Math.floor(safe / 60);
+      const seconds = safe % 60;
+      return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    }
+
+    function updateWebProgress({ stage = 'queued', percent = 0, completed = 0, total = 0, elapsed = 0, eta = null }) {
+      const boundedPercent = Math.max(0, Math.min(100, Number(percent || 0)));
+      el.webStage.textContent = `Stage: ${stage}`;
+      el.webPercent.textContent = `${boundedPercent}%`;
+      el.webProgressFill.style.width = `${boundedPercent}%`;
+      const etaText = eta === null ? '-' : formatDuration(eta);
+      el.webProgressStats.textContent = `Processed ${completed}/${total} nodes • Elapsed ${formatDuration(elapsed)} • ETA ${etaText}`;
+    }
+
+    async function parseApiResponse(res) {
+      const raw = await res.text();
+      try {
+        return JSON.parse(raw);
+      } catch (_err) {
+        return { detail: raw.slice(0, 300) || `HTTP ${res.status}` };
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    function summarize(report) {
+      const total = report?.summary?.totalFindings || 0;
+      const results = report?.results || [];
+      const success = results.filter((x) => x.status === 'success').length;
+      const errors = results.filter((x) => x.status === 'error').length;
+      const avg = results.length
+        ? Math.round(results.reduce((acc, x) => acc + (x.latencyMs || 0), 0) / results.length)
+        : 0;
+
+      el.sumFindings.textContent = String(total);
+      el.sumSuccess.textContent = String(success);
+      el.sumErrors.textContent = String(errors);
+      el.sumLatency.textContent = String(avg);
+    }
+
+    function summarizeFix(result) {
+      const summary = result.proposedHtml || result.proposedAltText || result.error || '-';
+      const actions = Array.isArray(result.details?.actions) ? result.details.actions : [];
+      if (!actions.length) return String(summary);
+
+      const firstTwo = actions
+        .slice(0, 2)
+        .map((action, index) => {
+          const title = action?.title || `Fix ${index + 1}`;
+          const fix = action?.fix || '';
+          return `${title}: ${fix}`.trim();
+        })
+        .join(' | ');
+
+      return `${summary} | ${firstTwo}`;
+    }
+
+    function expandResultRows(report) {
+      const results = report?.results || [];
+      return results.flatMap((result) => {
+        const target = result.targetSelector || (result.page ? `page:${result.page}` : '-');
+        const actions = Array.isArray(result.details?.actions) ? result.details.actions : [];
+        if (actions.length) {
+          return actions.map((action) => ({
+            ruleId: result.ruleId,
+            target,
+            issue: action?.title || result.rationale || result.ruleId,
+            remediation: action?.fix || result.proposedHtml || result.proposedAltText || result.error || '-',
+            suggestedValue: action?.suggestion || '-',
+            status: result.status || 'unknown',
+            traceId: result.traceId || '',
+          }));
+        }
+
+        return [{
+          ruleId: result.ruleId,
+          target,
+          issue: result.rationale || result.ruleId,
+          remediation: result.proposedHtml || result.proposedAltText || result.error || '-',
+          suggestedValue: '-',
+          status: result.status || 'unknown',
+          traceId: result.traceId || '',
+        }];
+      });
+    }
+
+    function renderFixBoard(report) {
+      const results = report?.results || [];
+      const actionEntries = results.flatMap((result) => {
+        const actions = Array.isArray(result.details?.actions) ? result.details.actions : [];
+        return actions.map((action, index) => ({
+          ruleId: result.ruleId,
+          page: result.page,
+          summary: result.proposedHtml || result.proposedAltText || result.error || '',
+          title: action?.title || `Fix ${index + 1}`,
+          fix: action?.fix || '',
+          suggestion: action?.suggestion || '',
+          expectedOutcome: result.details?.expectedOutcome || '',
+          limitation: Array.isArray(result.details?.limitations) ? result.details.limitations[0] || '' : ''
+        }));
+      });
+
+      if (!actionEntries.length) {
+        el.fixBoard.hidden = true;
+        el.fixGrid.innerHTML = '';
+        el.fixFootnote.textContent = '';
+        return;
+      }
+
+      el.fixBoard.hidden = false;
+      el.fixBoardMeta.textContent = actionEntries[0].summary || 'Review the generated fix plan below.';
+      el.fixGrid.innerHTML = actionEntries.map((entry, index) => `
+        <article class="fix-card">
+          <div class="fix-index">${index + 1}</div>
+          <h4>${escapeHtml(entry.title)}</h4>
+          <p>${escapeHtml(entry.fix)}</p>
+          ${entry.suggestion ? `
+            <div class="fix-label">Suggested Value</div>
+            <div class="fix-suggestion">${escapeHtml(entry.suggestion)}</div>
+          ` : ''}
+          <div class="fix-label">Location</div>
+          <p class="muted">${escapeHtml(entry.page ? `Page ${entry.page}` : entry.ruleId)}</p>
+        </article>
+      `).join('');
+
+      const expectedOutcome = actionEntries.find((entry) => entry.expectedOutcome)?.expectedOutcome || '';
+      const limitation = actionEntries.find((entry) => entry.limitation)?.limitation || '';
+      const footnote = [expectedOutcome, limitation].filter(Boolean).join(' ');
+      el.fixFootnote.textContent = footnote || 'Use the checklist above as the operator-facing remediation plan.';
+    }
+
+    function renderResults(report) {
+      const rows = expandResultRows(report);
+      if (!rows.length) {
+        el.resultsBody.innerHTML = '<tr><td colspan="7" class="muted">No remediation results available.</td></tr>';
+        return;
+      }
+
+      el.resultsBody.innerHTML = rows.map((r) => {
+        const statusClass = ['success', 'error', 'skipped'].includes(r.status) ? r.status : 'skipped';
+        return `
+          <tr>
+            <td><code>${escapeHtml(r.ruleId)}</code></td>
+            <td>${escapeHtml(r.target)}</td>
+            <td>${escapeHtml(r.issue)}</td>
+            <td><code>${escapeHtml(String(r.remediation).slice(0, 220))}</code></td>
+            <td><code>${escapeHtml(String(r.suggestedValue).slice(0, 160))}</code></td>
+            <td><span class="status ${statusClass}">${escapeHtml(r.status || 'unknown')}</span></td>
+            <td><code>${escapeHtml((r.traceId || '').slice(0, 16))}</code></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderReport(report) {
+      state.latestReport = report;
+      summarize(report);
+      renderFixBoard(report);
+      renderResults(report);
+      el.jsonDump.textContent = JSON.stringify(report, null, 2);
+    }
+
+    async function checkApi() {
+      try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('API unavailable');
+        el.apiStatus.textContent = 'API Connected';
+        el.apiStatus.style.color = 'var(--ok)';
+      } catch (_err) {
+        el.apiStatus.textContent = 'API Offline';
+        el.apiStatus.style.color = 'var(--error)';
+      }
+    }
+
+    async function runWebScan() {
+      const url = el.webUrl.value.trim();
+      if (!url) {
+        setMeta(el.webMeta, 'Provide a URL first.', true);
+        return;
+      }
+
+      setButtonLoading(el.runWeb, true, 'Running...');
+      setMeta(el.webMeta, 'Queuing web remediation job...');
+      updateWebProgress({ stage: 'queued', percent: 0, completed: 0, total: 0, elapsed: 0, eta: null });
+
+      try {
+        const res = await fetch('/api/web/jobs', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await parseApiResponse(res);
+        if (!res.ok) throw new Error(data.detail || 'Failed to queue web job');
+
+        state.latestWebJobId = data.jobId;
+        setMeta(el.webMeta, `Job ${data.jobId.slice(0, 8)} created. Polling status...`);
+        await pollWebJob(data.jobId);
+      } catch (err) {
+        setMeta(el.webMeta, err.message || 'Web scan failed.', true);
+        updateWebProgress({ stage: 'failed', percent: 0, completed: 0, total: 0, elapsed: 0, eta: null });
+      } finally {
+        setButtonLoading(el.runWeb, false);
+      }
+    }
+
+    async function pollWebJob(jobId) {
+      const startedAtMs = Date.now();
+      let lastProgressMs = startedAtMs;
+      let lastCompleted = -1;
+      let lastStage = '';
+      const maxTotalSeconds = 1800;
+      const maxStallSeconds = 360;
+
+      for (;;) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const res = await fetch(`/api/web/jobs/${jobId}`);
+        const data = await parseApiResponse(res);
+        if (!res.ok) throw new Error(data.detail || 'Failed to poll web job');
+
+        const progress = data.progress || {};
+        const completed = Number(progress.completedNodes || 0);
+        const total = Number(progress.totalNodes || 0);
+        const elapsed = Number(progress.elapsedSeconds || 0);
+        const percent = total > 0 ? Math.round((completed / total) * 100) : Number(progress.percent || 0);
+        const eta = completed > 0 && total > completed
+          ? Math.round((elapsed / completed) * (total - completed))
+          : null;
+
+        if (completed > lastCompleted || (data.stage || '') !== lastStage) {
+          lastProgressMs = Date.now();
+          lastCompleted = completed;
+          lastStage = data.stage || '';
+        }
+
+        updateWebProgress({
+          stage: data.stage || data.status || 'processing',
+          percent,
+          completed,
+          total,
+          elapsed,
+          eta
+        });
+
+        if (data.status === 'completed') {
+          const reportRes = await fetch(`/api/web/jobs/${jobId}/report?format=json`);
+          const report = await parseApiResponse(reportRes);
+          if (!reportRes.ok) throw new Error(report.detail || 'Failed to fetch web report');
+          renderReport(report);
+          setMeta(el.webMeta, `Completed: ${report.summary.totalFindings} findings processed.`);
+          updateWebProgress({
+            stage: 'completed',
+            percent: 100,
+            completed: total || report.summary.totalFindings || completed,
+            total: total || report.summary.totalFindings || completed,
+            elapsed,
+            eta: 0
+          });
+          return;
+        }
+
+        if (data.status === 'failed') {
+          throw new Error(data.error || 'Web job failed');
+        }
+
+        const elapsedTotalSeconds = Math.floor((Date.now() - startedAtMs) / 1000);
+        const stalledSeconds = Math.floor((Date.now() - lastProgressMs) / 1000);
+        if (elapsedTotalSeconds > maxTotalSeconds) {
+          throw new Error('Web job exceeded max wait time. Check status again in a moment.');
+        }
+        if (stalledSeconds > maxStallSeconds) {
+          throw new Error('Web job appears stalled. Please retry or reduce scan scope.');
+        }
+
+        setMeta(el.webMeta, `Web job status: ${data.status}`);
+      }
+    }
+
+    async function createPdfJob() {
+      const url = el.pdfUrl.value.trim();
+      const file = el.pdfFile.files?.[0];
+
+      if (!url && !file) {
+        setMeta(el.pdfMeta, 'Provide a PDF URL or upload a file.', true);
+        return;
+      }
+
+      setButtonLoading(el.runPdf, true, 'Queuing...');
+      setMeta(el.pdfMeta, 'Creating PDF job...');
+      el.openHtml.disabled = true;
+      el.downloadPdf.disabled = true;
+
+      try {
+        let res;
+
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          res = await fetch('/api/pdf/jobs', { method: 'POST', body: formData });
+        } else {
+          const endpoint = `/api/pdf/jobs?pdf_url=${encodeURIComponent(url)}`;
+          res = await fetch(endpoint, { method: 'POST' });
+        }
+
+        const data = await parseApiResponse(res);
+        if (!res.ok) throw new Error(data.detail || 'Failed to create PDF job');
+
+        state.latestPdfJobId = data.jobId;
+        setMeta(el.pdfMeta, `Job ${data.jobId.slice(0, 8)} created. Polling status...`);
+        await pollPdfJob(data.jobId);
+      } catch (err) {
+        setMeta(el.pdfMeta, err.message || 'Failed to create PDF job.', true);
+      } finally {
+        setButtonLoading(el.runPdf, false);
+      }
+    }
+
+    async function pollPdfJob(jobId) {
+      const maxChecks = 90;
+      for (let i = 0; i < maxChecks; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const res = await fetch(`/api/pdf/jobs/${jobId}`);
+        const data = await parseApiResponse(res);
+        if (!res.ok) throw new Error(data.detail || 'Failed to poll PDF job');
+
+        if (data.status === 'completed') {
+          setMeta(el.pdfMeta, `PDF job completed. Job ID: ${jobId}`);
+          el.openHtml.disabled = false;
+          el.downloadPdf.disabled = false;
+
+          const reportRes = await fetch(`/api/pdf/jobs/${jobId}/report?format=json`);
+          const report = await parseApiResponse(reportRes);
+          if (reportRes.ok) renderReport(report);
+          return;
+        }
+
+        if (data.status === 'failed') {
+          throw new Error(data.error || 'PDF job failed');
+        }
+
+        setMeta(el.pdfMeta, `PDF job status: ${data.status}`);
+      }
+
+      throw new Error('PDF job timed out while polling.');
+    }
+
+    el.runWeb.addEventListener('click', runWebScan);
+    el.useDemo.addEventListener('click', () => {
+      el.webUrl.value = 'https://hounder.co';
+      setMeta(el.webMeta, 'Demo URL loaded.');
+    });
+
+    el.runPdf.addEventListener('click', createPdfJob);
+
+    el.openHtml.addEventListener('click', () => {
+      if (!state.latestPdfJobId) return;
+      window.open(`/api/pdf/jobs/${state.latestPdfJobId}/report?format=html`, '_blank');
+    });
+
+    el.downloadPdf.addEventListener('click', () => {
+      if (!state.latestPdfJobId) return;
+      window.open(`/api/pdf/jobs/${state.latestPdfJobId}/report?format=pdf`, '_blank');
+    });
+
+    el.toggleJson.addEventListener('click', () => {
+      el.jsonWrap.hidden = !el.jsonWrap.hidden;
+    });
+
+    checkApi();
+    updateWebProgress({ stage: 'idle', percent: 0, completed: 0, total: 0, elapsed: 0, eta: null });
+  </script>
+</body>
+</html>

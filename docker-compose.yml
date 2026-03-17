@@ -1,0 +1,73 @@
+services:
+  phase1-scanner:
+    build:
+      context: .
+      dockerfile: phase1-scanner/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - PORT=${PHASE1_PORT:-4001}
+      - MAX_SCREENSHOT_BYTES=${PHASE1_MAX_SCREENSHOT_BYTES:-350000}
+      - NAVIGATION_TIMEOUT_MS=${PHASE1_NAVIGATION_TIMEOUT_MS:-30000}
+      - SCAN_TIMEOUT_MS=${PHASE1_SCAN_TIMEOUT_MS:-60000}
+      - AXE_TAGS=${AXE_TAGS:-wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22a,wcag22aa}
+      - AXE_SCHEMA_PATH=/contracts/axe-violation-payload.schema.json
+    ports:
+      - "4001:4001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  phase2-gradient-core:
+    build:
+      context: .
+      dockerfile: phase2-gradient-core/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - PORT=${PHASE2_PORT:-8000}
+      - PHASE1_SCANNER_URL=${PHASE1_SCANNER_URL:-http://phase1-scanner:4001}
+      - GRADIENT_API_KEY=${GRADIENT_API_KEY}
+      - GRADIENT_BASE_URL=${GRADIENT_BASE_URL}
+      - GRADIENT_CODER_MODEL_ID=${GRADIENT_CODER_MODEL_ID}
+      - GRADIENT_VISION_MODEL_ID=${GRADIENT_VISION_MODEL_ID}
+      - GRADIENT_PDF_MODEL_ID=${GRADIENT_PDF_MODEL_ID}
+      - GRADIENT_REQUEST_TIMEOUT_SECONDS=${GRADIENT_REQUEST_TIMEOUT_SECONDS:-90}
+      - PDF_JOB_TTL_SECONDS=${PDF_JOB_TTL_SECONDS:-7200}
+      - WEB_PARALLELISM=${WEB_PARALLELISM:-6}
+      - WEB_NODE_TIMEOUT_SECONDS=${WEB_NODE_TIMEOUT_SECONDS:-40}
+      - MAX_WEB_NODES=${MAX_WEB_NODES:-30}
+      - REMEDIATION_CACHE_ENABLED=${REMEDIATION_CACHE_ENABLED:-true}
+      - REMEDIATION_CACHE_PATH=${REMEDIATION_CACHE_PATH:-/data/remediation-cache.sqlite3}
+    depends_on:
+      phase1-scanner:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - phase2-cache:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;import sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  frontend-dashboard:
+    build:
+      context: .
+      dockerfile: frontend-dashboard/Dockerfile
+    depends_on:
+      phase2-gradient-core:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  phase2-cache:
