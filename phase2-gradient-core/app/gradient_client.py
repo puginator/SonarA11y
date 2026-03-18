@@ -405,6 +405,32 @@ class GradientInferenceClient:
             ),
         )
 
+    async def rewrite_html_batch(self, items: list[dict[str, Any]], rule_id: str) -> GradientResponse:
+        compact_items = []
+        for item in items:
+            compact_items.append({
+                "index": item["index"],
+                "targetSelector": item.get("targetSelector"),
+                "failureSummary": self._sanitize_text_for_prompt(str(item.get("failureSummary") or ""), max_chars=700),
+                "rawHtml": self._sanitize_html_for_prompt(str(item.get("rawHtml") or ""), max_chars=1800),
+            })
+
+        return await self.infer(
+            model_id=self._settings.gradient_coder_model_id,
+            system_prompt=(
+                "You are GPT-5.3-Codex focused on WCAG remediation."
+                " Return JSON only."
+            ),
+            user_prompt=(
+                "Rewrite each HTML snippet to satisfy the accessibility failure.\n"
+                "Return JSON with this shape only:\n"
+                "{\"results\": [{\"index\": number, \"correctedHtml\": string}]}\n"
+                "Do not omit any item. Do not include markdown or commentary.\n"
+                f"Rule: {rule_id}\n"
+                f"Items: {json.dumps(compact_items, ensure_ascii=True)}"
+            ),
+        )
+
     async def analyze_pdf_page(self, page_text_hint: str, rule_context: str) -> GradientResponse:
         compact_hint = self._sanitize_text_for_prompt(page_text_hint, max_chars=2000)
         compact_context = self._sanitize_text_for_prompt(rule_context, max_chars=600)
@@ -501,3 +527,45 @@ class GradientInferenceClient:
             return None, None, cls._sanitize_text_for_prompt(text, 500)
 
         return cls._sanitize_text_for_prompt(text, 400), None, None
+
+    @classmethod
+    def normalize_coder_batch_output(
+        cls,
+        response_text: str,
+        expected_count: int,
+    ) -> tuple[dict[int, str], str | None]:
+        text = (response_text or "").strip()
+        if not text:
+            return {}, "Model returned empty batch remediation output."
+
+        parsed = cls._extract_json_fragment(text)
+        if not isinstance(parsed, (dict, list)):
+            return {}, "Batch remediation response was not valid JSON."
+
+        items = parsed.get("results") if isinstance(parsed, dict) else parsed
+        if not isinstance(items, list):
+            return {}, "Batch remediation response did not contain a results array."
+
+        normalized: dict[int, str] = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            index_value = item.get("index")
+            if not isinstance(index_value, int):
+                continue
+            corrected_html = cls._find_string_by_keys(
+                item,
+                (
+                    "correctedHtml",
+                    "corrected_html",
+                    "proposedHtml",
+                    "html",
+                ),
+            )
+            if corrected_html:
+                normalized[index_value] = corrected_html
+
+        if len(normalized) < expected_count:
+            return normalized, "Batch remediation response was incomplete."
+
+        return normalized, None

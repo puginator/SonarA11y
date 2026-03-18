@@ -17,6 +17,9 @@ class Settings:
     pdf_job_ttl_seconds: int
     web_parallelism: int
     web_node_timeout_seconds: int
+    web_node_max_retries: int
+    web_retry_backoff_seconds: int
+    web_batch_size: int
     max_web_nodes: int
     remediation_cache_enabled: bool
     remediation_cache_path: str
@@ -43,6 +46,9 @@ def load_settings() -> Settings:
         pdf_job_ttl_seconds=int(os.getenv("PDF_JOB_TTL_SECONDS", "7200")),
         web_parallelism=int(os.getenv("WEB_PARALLELISM", "4")),
         web_node_timeout_seconds=int(os.getenv("WEB_NODE_TIMEOUT_SECONDS", "45")),
+        web_node_max_retries=int(os.getenv("WEB_NODE_MAX_RETRIES", "1")),
+        web_retry_backoff_seconds=int(os.getenv("WEB_RETRY_BACKOFF_SECONDS", "2")),
+        web_batch_size=int(os.getenv("WEB_BATCH_SIZE", "4")),
         max_web_nodes=int(os.getenv("MAX_WEB_NODES", "30")),
         remediation_cache_enabled=cache_enabled,
         remediation_cache_path=os.getenv("REMEDIATION_CACHE_PATH", "/tmp/sonara11y-remediation-cache.sqlite3"),

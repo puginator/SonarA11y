@@ -94,3 +94,29 @@ def test_render_pdf_report_handles_action_rows_without_fpdf_layout_error() -> No
     pdf_bytes = render_pdf_report(report)
     assert pdf_bytes.startswith(b"%PDF")
     assert b"Reservation Invoice" in pdf_bytes
+
+
+def test_render_html_report_falls_back_to_plain_english_web_guidance() -> None:
+    report = FixReport(
+        reportType="web",
+        scanMetadata={"url": "https://example.com"},
+        summary=FixSummary(totalFindings=1, byAgent={"coder_node": 1}, bySeverity={"serious": 1}),
+        results=[
+            FixResult(
+                ruleId="color-contrast",
+                targetSelector=".cta-link",
+                assignedAgent="coder_node",
+                status="success",
+                proposedHtml='<a class="cta-link" href="/apply" style="color: #000000; text-decoration: underline;">Apply now</a>',
+                rationale="Generated from failure summary and source HTML.",
+                traceId="trace-2",
+                modelId="heuristic-fast-path",
+                latencyMs=0,
+            )
+        ],
+    )
+
+    html = render_html_report(report)
+    assert "This text does not have enough contrast against its background." in html
+    assert "Adjust the text or background colors until the element reaches WCAG contrast requirements." in html
+    assert "Set text color to #000000 and keep underline styling." in html

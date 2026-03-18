@@ -286,6 +286,118 @@
 
     .table-wrap { overflow: auto; max-height: 60vh; }
 
+    .table-wrap code,
+    .table-wrap pre,
+    .fix-suggestion,
+    .muted code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .value-preview {
+      display: grid;
+      gap: 8px;
+    }
+
+    .value-preview-text {
+      color: var(--muted);
+    }
+
+    .value-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .inline-action {
+      appearance: none;
+      border: 1px solid rgba(126, 159, 177, 0.35);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font: inherit;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+    }
+
+    .inline-action:hover {
+      border-color: rgba(70, 215, 255, 0.55);
+      background: rgba(70, 215, 255, 0.08);
+    }
+
+    .viewer-modal[hidden] {
+      display: none;
+    }
+
+    .viewer-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(3, 8, 12, 0.7);
+      backdrop-filter: blur(8px);
+    }
+
+    .viewer-dialog {
+      width: min(920px, 94vw);
+      max-height: 86vh;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      background:
+        linear-gradient(155deg, rgba(11, 21, 31, 0.98), rgba(16, 29, 40, 0.96));
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+    }
+
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .viewer-title {
+      margin: 0;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.08em;
+      font-size: 1.5rem;
+      font-weight: 400;
+    }
+
+    .viewer-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .viewer-body {
+      padding: 18px;
+      overflow: auto;
+      max-height: calc(86vh - 78px);
+    }
+
+    .viewer-content {
+      margin: 0;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(5, 10, 15, 0.88);
+      color: var(--text);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
     .fix-board {
       margin-bottom: 18px;
       border: 1px solid var(--line);
@@ -606,6 +718,21 @@
     </section>
   </main>
 
+  <div class="viewer-modal" id="viewer-modal" hidden>
+    <div class="viewer-dialog" role="dialog" aria-modal="true" aria-labelledby="viewer-title">
+      <div class="viewer-header">
+        <h3 class="viewer-title" id="viewer-title">Full Value</h3>
+        <div class="viewer-actions">
+          <button class="tertiary" id="viewer-copy">Copy</button>
+          <button class="tertiary" id="viewer-close">Close</button>
+        </div>
+      </div>
+      <div class="viewer-body">
+        <pre class="viewer-content" id="viewer-content"></pre>
+      </div>
+    </div>
+  </div>
+
   <script>
     const el = {
       apiStatus: document.getElementById('api-status'),
@@ -635,13 +762,21 @@
       resultsBody: document.getElementById('results-body'),
       toggleJson: document.getElementById('toggle-json'),
       jsonWrap: document.getElementById('json-wrap'),
-      jsonDump: document.getElementById('json-dump')
+      jsonDump: document.getElementById('json-dump'),
+      viewerModal: document.getElementById('viewer-modal'),
+      viewerTitle: document.getElementById('viewer-title'),
+      viewerContent: document.getElementById('viewer-content'),
+      viewerCopy: document.getElementById('viewer-copy'),
+      viewerClose: document.getElementById('viewer-close')
     };
 
     const state = {
       latestReport: null,
       latestWebJobId: null,
-      latestPdfJobId: null
+      latestPdfJobId: null,
+      valueViews: {},
+      nextValueViewId: 0,
+      activeValueViewId: null
     };
 
     function setButtonLoading(button, isLoading, label) {
@@ -724,6 +859,182 @@
       return `${summary} | ${firstTwo}`;
     }
 
+    function compactHtml(html, max = 140) {
+      const compact = String(html || '').replace(/\s+/g, ' ').trim();
+      if (compact.length <= max) return compact || '-';
+      return `${compact.slice(0, max - 3).trimEnd()}...`;
+    }
+
+    function normalizeHtmlInline(html) {
+      return String(html || '').replace(/\s+/g, ' ').trim() || '-';
+    }
+
+    function resetValueViews() {
+      state.valueViews = {};
+      state.nextValueViewId = 0;
+      state.activeValueViewId = null;
+    }
+
+    function registerValueView(text, label) {
+      const id = `value-${++state.nextValueViewId}`;
+      state.valueViews[id] = {
+        text: String(text ?? ''),
+        label: label || 'full value'
+      };
+      return id;
+    }
+
+    async function copyTextValue(text) {
+      try {
+        await navigator.clipboard.writeText(String(text ?? ''));
+      } catch (_err) {
+        const area = document.createElement('textarea');
+        area.value = String(text ?? '');
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+    }
+
+    function openValueModal(id) {
+      const item = state.valueViews[id];
+      if (!item) return;
+      state.activeValueViewId = id;
+      el.viewerTitle.textContent = `Full ${item.label}`;
+      el.viewerContent.textContent = item.text || '-';
+      el.viewerModal.hidden = false;
+    }
+
+    function closeValueModal() {
+      el.viewerModal.hidden = true;
+      state.activeValueViewId = null;
+    }
+
+    function renderValuePreview(text, { threshold = 160, label = 'full value' } = {}) {
+      const value = String(text ?? '');
+      const compact = value.replace(/\s+/g, ' ').trim();
+      if (!compact || compact.length <= threshold) {
+        return `<code>${escapeHtml(value || '-')}</code>`;
+      }
+
+      const id = registerValueView(value, label);
+      const preview = `${compact.slice(0, threshold - 3).trimEnd()}...`;
+      return `
+        <div class="value-preview">
+          <div class="value-preview-text">${escapeHtml(preview)}</div>
+          <div class="value-actions">
+            <button class="inline-action" type="button" data-view-id="${escapeHtml(id)}">Show full ${escapeHtml(label)}</button>
+            <button class="inline-action" type="button" data-copy-id="${escapeHtml(id)}">Copy ${escapeHtml(label)}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function extractStyleProp(html, propName) {
+      const match = String(html || '').match(/style\s*=\s*(["'])(.*?)\1/i);
+      if (!match) return null;
+      const parts = match[2].split(';');
+      for (const part of parts) {
+        const [rawKey, ...rest] = part.split(':');
+        if (!rawKey || !rest.length) continue;
+        if (rawKey.trim().toLowerCase() === propName.toLowerCase()) {
+          const value = rest.join(':').trim();
+          if (value) return value;
+        }
+      }
+      return null;
+    }
+
+    function fallbackIssueText(result) {
+      const map = {
+        'aria-prohibited-attr': 'This element uses an ARIA attribute that is not allowed here.',
+        'color-contrast': 'This text does not have enough contrast against its background.',
+        'heading-order': 'The heading level is out of sequence for the page structure.',
+        'image-alt': 'This image needs useful alternative text.',
+        'nested-interactive': 'A clickable container also contains another clickable control.'
+      };
+      return map[result.ruleId] || result.rationale || result.ruleId;
+    }
+
+    function fallbackRemediationText(result) {
+      const map = {
+        'aria-prohibited-attr': 'Remove the prohibited ARIA attribute or move the label to an element that supports it.',
+        'color-contrast': 'Adjust the text or background colors until the element reaches WCAG contrast requirements.',
+        'heading-order': 'Change the heading tag so headings move in a logical order without skipping levels.',
+        'image-alt': 'Add concise alt text that describes the image purpose for a non-visual user.',
+        'nested-interactive': 'Keep a single interactive control. Remove button or link behavior from the outer wrapper or restructure the markup.'
+      };
+      return map[result.ruleId] || result.error || result.rationale || (result.proposedAltText ? 'Use the suggested alt text on the image element.' : 'Apply the suggested HTML update to this element.');
+    }
+
+    function fallbackSuggestedValue(result) {
+      if (result.status === 'error') return '-';
+      if (result.proposedAltText) return `alt="${result.proposedAltText}"`;
+
+      if (result.ruleId === 'color-contrast') {
+        const color = extractStyleProp(result.proposedHtml, 'color');
+        const decoration = extractStyleProp(result.proposedHtml, 'text-decoration');
+        if (color && decoration) return `Set text color to ${color} and keep ${decoration} styling.`;
+        if (color) return `Set text color to ${color}.`;
+      }
+
+      if (result.ruleId === 'heading-order') {
+        const match = String(result.proposedHtml || '').match(/<h([1-6])\b/i);
+        if (match) return `Use <h${match[1]}> for this heading.`;
+      }
+
+      if (result.ruleId === 'aria-prohibited-attr' && String(result.proposedHtml || '').includes('aria-label') === false) {
+        return 'Remove the aria-label attribute from the element.';
+      }
+
+      if (result.proposedHtml) return normalizeHtmlInline(result.proposedHtml);
+      return '-';
+    }
+
+    function describeSelector(selector) {
+      const value = String(selector || '').trim();
+      if (!value) return 'Affected element';
+
+      const attrMatch = value.match(/^([a-z0-9:-]+)?\[aria-label="([^"]+)"\]/i);
+      if (attrMatch) {
+        const tag = attrMatch[1] ? `<${attrMatch[1]}>` : 'Element';
+        return `${tag} labelled "${attrMatch[2]}"`;
+      }
+
+      const idMatch = value.match(/^([a-z0-9:-]+)?#([a-z0-9_-]+)/i);
+      if (idMatch) {
+        const tag = idMatch[1] ? `<${idMatch[1]}>` : 'Element';
+        return `${tag} with id "${idMatch[2]}"`;
+      }
+
+      const classMatch = value.match(/^([a-z0-9:-]+)?\.([a-z0-9_-]+)/i);
+      if (classMatch) {
+        const tag = classMatch[1] ? `<${classMatch[1]}>` : 'Element';
+        return `${tag} with class "${classMatch[2]}"`;
+      }
+
+      const tagMatch = value.match(/^([a-z0-9:-]+)/i);
+      if (tagMatch) return `<${tagMatch[1]}> element`;
+
+      return 'Affected element';
+    }
+
+    function describeResultLocation(result) {
+      if (result.page) {
+        return {
+          label: `Page ${result.page}`,
+          detail: result.objectRef || ''
+        };
+      }
+
+      const selector = result.targetSelector || '';
+      return {
+        label: describeSelector(selector),
+        detail: selector
+      };
+    }
+
     function expandResultRows(report) {
       const results = report?.results || [];
       return results.flatMap((result) => {
@@ -744,9 +1055,9 @@
         return [{
           ruleId: result.ruleId,
           target,
-          issue: result.rationale || result.ruleId,
-          remediation: result.proposedHtml || result.proposedAltText || result.error || '-',
-          suggestedValue: '-',
+          issue: fallbackIssueText(result),
+          remediation: fallbackRemediationText(result),
+          suggestedValue: fallbackSuggestedValue(result),
           status: result.status || 'unknown',
           traceId: result.traceId || '',
         }];
@@ -757,10 +1068,12 @@
       const results = report?.results || [];
       const actionEntries = results.flatMap((result) => {
         const actions = Array.isArray(result.details?.actions) ? result.details.actions : [];
+        const location = describeResultLocation(result);
         return actions.map((action, index) => ({
           ruleId: result.ruleId,
           page: result.page,
-          summary: result.proposedHtml || result.proposedAltText || result.error || '',
+          locationLabel: location.label,
+          locationDetail: location.detail,
           title: action?.title || `Fix ${index + 1}`,
           fix: action?.fix || '',
           suggestion: action?.suggestion || '',
@@ -777,18 +1090,23 @@
       }
 
       el.fixBoard.hidden = false;
-      el.fixBoardMeta.textContent = actionEntries[0].summary || 'Review the generated fix plan below.';
+      const uniqueLocations = new Set(actionEntries.map((entry) => `${entry.locationLabel}|${entry.locationDetail}`)).size;
+      el.fixBoardMeta.textContent = `${actionEntries.length} remediation step${actionEntries.length === 1 ? '' : 's'} across ${uniqueLocations} affected element${uniqueLocations === 1 ? '' : 's'}.`;
       el.fixGrid.innerHTML = actionEntries.map((entry, index) => `
         <article class="fix-card">
           <div class="fix-index">${index + 1}</div>
+          <div class="fix-label">Element</div>
+          <p>${escapeHtml(entry.locationLabel)}</p>
+          ${entry.locationDetail ? `
+            <div class="fix-label">Selector</div>
+            <p class="muted"><code>${escapeHtml(entry.locationDetail)}</code></p>
+          ` : ''}
           <h4>${escapeHtml(entry.title)}</h4>
           <p>${escapeHtml(entry.fix)}</p>
           ${entry.suggestion ? `
             <div class="fix-label">Suggested Value</div>
-            <div class="fix-suggestion">${escapeHtml(entry.suggestion)}</div>
+            ${renderValuePreview(entry.suggestion, { threshold: 180, label: 'suggested value' })}
           ` : ''}
-          <div class="fix-label">Location</div>
-          <p class="muted">${escapeHtml(entry.page ? `Page ${entry.page}` : entry.ruleId)}</p>
         </article>
       `).join('');
 
@@ -812,8 +1130,8 @@
             <td><code>${escapeHtml(r.ruleId)}</code></td>
             <td>${escapeHtml(r.target)}</td>
             <td>${escapeHtml(r.issue)}</td>
-            <td><code>${escapeHtml(String(r.remediation).slice(0, 220))}</code></td>
-            <td><code>${escapeHtml(String(r.suggestedValue).slice(0, 160))}</code></td>
+            <td>${renderValuePreview(r.remediation, { threshold: 220, label: 'remediation' })}</td>
+            <td>${renderValuePreview(r.suggestedValue, { threshold: 180, label: 'suggested value' })}</td>
             <td><span class="status ${statusClass}">${escapeHtml(r.status || 'unknown')}</span></td>
             <td><code>${escapeHtml((r.traceId || '').slice(0, 16))}</code></td>
           </tr>
@@ -823,6 +1141,7 @@
 
     function renderReport(report) {
       state.latestReport = report;
+      resetValueViews();
       summarize(report);
       renderFixBoard(report);
       renderResults(report);
@@ -840,6 +1159,43 @@
         el.apiStatus.style.color = 'var(--error)';
       }
     }
+
+    document.addEventListener('click', async (event) => {
+      const viewButton = event.target.closest('[data-view-id]');
+      if (viewButton) {
+        openValueModal(viewButton.getAttribute('data-view-id'));
+        return;
+      }
+
+      const copyButton = event.target.closest('[data-copy-id]');
+      if (copyButton) {
+        const id = copyButton.getAttribute('data-copy-id');
+        const item = state.valueViews[id];
+        if (item) await copyTextValue(item.text);
+        return;
+      }
+    });
+
+    el.viewerClose.addEventListener('click', () => {
+      closeValueModal();
+    });
+
+    el.viewerCopy.addEventListener('click', async () => {
+      const item = state.activeValueViewId ? state.valueViews[state.activeValueViewId] : null;
+      if (item) await copyTextValue(item.text);
+    });
+
+    el.viewerModal.addEventListener('click', (event) => {
+      if (event.target === el.viewerModal) {
+        closeValueModal();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !el.viewerModal.hidden) {
+        closeValueModal();
+      }
+    });
 
     async function runWebScan() {
       const url = el.webUrl.value.trim();

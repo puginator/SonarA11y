@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from html import escape
 from io import BytesIO
+import re
 from typing import Iterable
 
 from fpdf import FPDF
@@ -193,13 +194,74 @@ def _expand_item_rows(item: FixResult) -> list[dict[str, str]]:
     return [{
         "ruleId": item.ruleId,
         "location": location,
-        "issue": item.rationale or item.ruleId,
-        "remediation": summary,
-        "suggestedValue": "-",
+        "issue": _fallback_issue_text(item),
+        "remediation": _fallback_remediation_text(item),
+        "suggestedValue": _fallback_suggested_value(item),
         "status": item.status,
         "traceId": item.traceId,
         "notes": notes,
     }]
+
+
+def _fallback_issue_text(item: FixResult) -> str:
+    labels = {
+        "aria-prohibited-attr": "This element uses an ARIA attribute that is not allowed here.",
+        "color-contrast": "This text does not have enough contrast against its background.",
+        "heading-order": "The heading level is out of sequence for the page structure.",
+        "image-alt": "This image needs useful alternative text.",
+        "nested-interactive": "A clickable container also contains another clickable control.",
+    }
+    return labels.get(item.ruleId, item.rationale or item.ruleId)
+
+
+def _fallback_remediation_text(item: FixResult) -> str:
+    labels = {
+        "aria-prohibited-attr": "Remove the prohibited ARIA attribute or move the label to an element that supports it.",
+        "color-contrast": "Adjust the text or background colors until the element reaches WCAG contrast requirements.",
+        "heading-order": "Change the heading tag so headings move in a logical order without skipping levels.",
+        "image-alt": "Add concise alt text that describes the image purpose for a non-visual user.",
+        "nested-interactive": "Keep a single interactive control. Remove button or link behavior from the outer wrapper or restructure the markup.",
+    }
+    if item.status == "error" and item.error:
+        return item.error
+    return labels.get(item.ruleId, item.proposedAltText or ("Apply the suggested HTML update to this element." if item.proposedHtml else item.rationale or item.ruleId))
+
+
+def _fallback_suggested_value(item: FixResult) -> str:
+    if item.status == "error":
+        return "-"
+    if item.proposedAltText:
+        return f'alt="{item.proposedAltText}"'
+    if item.ruleId == "color-contrast":
+        color = _extract_style_property(item.proposedHtml or "", "color")
+        decoration = _extract_style_property(item.proposedHtml or "", "text-decoration")
+        if color and decoration:
+            return f"Set text color to {color} and keep {decoration} styling."
+        if color:
+            return f"Set text color to {color}."
+    if item.ruleId == "heading-order":
+        match = re.search(r"<h([1-6])\b", item.proposedHtml or "", flags=re.IGNORECASE)
+        if match:
+            return f"Use <h{match.group(1)}> for this heading."
+    if item.proposedHtml:
+        compact = " ".join((item.proposedHtml or "").split())
+        return compact
+    return "-"
+
+
+def _extract_style_property(html: str, prop_name: str) -> str | None:
+    style_match = re.search(r"""style\s*=\s*(["'])(.*?)\1""", html or "", flags=re.IGNORECASE | re.DOTALL)
+    if not style_match:
+        return None
+    for chunk in style_match.group(2).split(";"):
+        if ":" not in chunk:
+            continue
+        key, value = chunk.split(":", 1)
+        if key.strip().lower() == prop_name.lower():
+            cleaned = value.strip()
+            if cleaned:
+                return cleaned
+    return None
 
 
 def _pdf_write_line(
